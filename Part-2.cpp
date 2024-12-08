@@ -50,7 +50,7 @@ pair<int, vector<int>> longestIncreasingPath(int node) {
 
 int main() {
     // Reading graph data from "social-network-proj-graph.txt"
-    ifstream graphFile("./social-network-proj-graph/social-network-proj-graph.txt");
+    ifstream graphFile("social-network-proj-graph.txt");
     if (!graphFile) {
         cerr << "Error opening graph file." << endl;
         return 1;
@@ -64,7 +64,7 @@ int main() {
     graphFile.close();
 
     // Reading influence scores from "social-network-proj-Influences.txt"
-    ifstream influenceFile("./social-network-proj-graph/social-network-proj-Influences.txt");
+    ifstream influenceFile("social-network-proj-Influences.txt");
     if (!influenceFile) {
         cerr << "Error opening influence file." << endl;
         return 1;
