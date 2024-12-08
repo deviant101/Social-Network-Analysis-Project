@@ -1,110 +1,115 @@
 #include <iostream>
 #include <fstream>
-#include <sstream>
-#include <vector>
 #include <unordered_map>
-#include <list>
+#include <vector>
 #include <queue>
-#include <limits>
-#include <algorithm> // Include this header for reverse
+#include <set>
+#include <climits>
+#include <string>
+#include <sstream>
+#include <algorithm>
 
 using namespace std;
 
 struct Edge {
-    int target;
-    double weight;
+    int node;
+    int weight;
 };
 
-class Graph {
-public:
-    unordered_map<int, list<Edge>> adjList;
-
-    void addEdge(int u, int v, double w) {
-        adjList[u].push_back({v, w});
-        adjList[v].push_back({u, w});
-    }
-
-    void loadGraph(const string& filename) {
-        ifstream file(filename);
-        string line;
-        while (getline(file, line)) {
-            istringstream iss(line);
-            int u, v;
-            double w;
-            if (!(iss >> u >> v >> w)) { break; }
-            addEdge(u, v, w);
-        }
+// Custom comparator for the priority queue (min-heap)
+struct Compare {
+    bool operator()(const pair<int, int>& a, const pair<int, int>& b) {
+        return a.second > b.second;
     }
 };
 
-struct Node {
-    int id;
-    double cost;
+// Function to calculate the heuristic (number of neighbors)
+int heuristic(const unordered_map<int, vector<Edge>>& graph, int node) {
+    return graph.at(node).size();
+}
 
-    bool operator>(const Node& other) const {
-        return cost > other.cost;
+// Function to implement A* algorithm
+vector<int> a_star(const unordered_map<int, vector<Edge>>& graph, int start, int goal) {
+    priority_queue<pair<int, int>, vector<pair<int, int>>, Compare> pq;
+    unordered_map<int, int> g_score; // Cost from start to current node
+    unordered_map<int, int> came_from; // To reconstruct the path
+    set<int> visited;
+
+    for (const auto& entry : graph) {
+        g_score[entry.first] = INT_MAX;
     }
-};
+    g_score[start] = 0;
 
-pair<vector<int>, double> dijkstra(const Graph& graph, int start, int goal) {
-    priority_queue<Node, vector<Node>, greater<Node>> openSet;
-    unordered_map<int, double> gScore;
-    unordered_map<int, int> cameFrom;
+    pq.push({start, 0});
 
-    for (const auto& pair : graph.adjList) {
-        gScore[pair.first] = numeric_limits<double>::infinity();
-    }
-    gScore[start] = 0.0;
+    while (!pq.empty()) {
+        int current = pq.top().first;
+        pq.pop();
 
-    openSet.push({start, 0.0});
-
-    while (!openSet.empty()) {
-        Node current = openSet.top();
-        openSet.pop();
-
-        if (current.id == goal) {
+        if (current == goal) {
             vector<int> path;
-            for (int at = goal; at != start; at = cameFrom[at]) {
-                path.push_back(at);
+            while (current != start) {
+                path.push_back(current);
+                current = came_from[current];
             }
             path.push_back(start);
             reverse(path.begin(), path.end());
-            return {path, gScore[goal]};
+            return path;
         }
 
-        for (const Edge& edge : graph.adjList.at(current.id)) {
-            double tentative_gScore = gScore[current.id] + edge.weight;
-            if (tentative_gScore < gScore[edge.target]) {
-                cameFrom[edge.target] = current.id;
-                gScore[edge.target] = tentative_gScore;
-                openSet.push({edge.target, tentative_gScore});
+        visited.insert(current);
+
+        for (const Edge& edge : graph.at(current)) {
+            int neighbor = edge.node;
+            if (visited.find(neighbor) != visited.end()) {
+                continue;
+            }
+
+            int tentative_g_score = g_score[current] + edge.weight;
+            if (tentative_g_score < g_score[neighbor]) {
+                came_from[neighbor] = current;
+                g_score[neighbor] = tentative_g_score;
+
+                int f_score = g_score[neighbor] + heuristic(graph, neighbor);
+                pq.push({neighbor, f_score});
             }
         }
     }
 
-    return {{}, numeric_limits<double>::infinity()}; // Return an empty path and infinity distance if no path is found
+    return {};
 }
 
 int main() {
-    Graph graph;
-    graph.loadGraph("social-network-proj-graph/social-network-proj-graph.txt");
+    unordered_map<int, vector<Edge>> graph;
 
-    int start = 523; // Example start node
-    int goal = 5229;  // Example goal node
+    // Reading graph data from "social-network-proj-graph.txt"
+    ifstream graphFile("social-network-proj-graph.txt");
+    if (!graphFile) {
+        cerr << "Error opening graph file." << endl;
+        return 1;
+    }
 
-    auto result = dijkstra(graph, start, goal);
-    vector<int> path = result.first;
-    double distance = result.second;
+    int node1, node2, weight;
+    while (graphFile >> node1 >> node2 >> weight) {
+        graph[node1].push_back({node2, weight});
+        graph[node2].push_back({node1, weight});
+    }
+    graphFile.close();
+
+    cout << "Enter start and goal nodes: ";
+    int start, goal;
+    cin >> start >> goal;
+
+    vector<int> path = a_star(graph, start, goal);
 
     if (!path.empty()) {
-        cout << "Shortest path from " << start << " to " << goal << ": ";
+        cout << "Path found: ";
         for (int node : path) {
             cout << node << " ";
         }
         cout << endl;
-        cout << "Shortest distance: " << distance << endl;
     } else {
-        cout << "No path found from " << start << " to " << goal << endl;
+        cout << "No path found." << endl;
     }
 
     return 0;
